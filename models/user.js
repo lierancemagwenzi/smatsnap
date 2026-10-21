@@ -17,6 +17,7 @@ module.exports = (sequelize, DataTypes) => {
                 user_type: this.user_type,
                 status: this.status,
                 email_verified_at: this.email_verified_at,
+                ...(this.user_type === 'admin' ? { admin_role: this.admin_role } : {}),
             };
         }
     }
@@ -25,8 +26,10 @@ module.exports = (sequelize, DataTypes) => {
         name: DataTypes.STRING,
         lastname: DataTypes.STRING,
         email: DataTypes.STRING,
-        // 'creator' (photographer) | 'client'
+        // 'creator' (photographer) | 'client' | 'admin' (dashboard only, never via signup)
         user_type: DataTypes.STRING,
+        // Admins only: 'super_admin' (also manages admins) | 'admin'
+        admin_role: DataTypes.STRING,
         status: DataTypes.STRING,
         password: DataTypes.STRING,
         email_verified_at: DataTypes.DATE,

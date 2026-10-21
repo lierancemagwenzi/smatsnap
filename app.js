@@ -33,6 +33,8 @@ const creator_routes = require('./app-routes/creator_routes');
 creator_routes(app);
 const client_routes = require('./app-routes/client_routes');
 client_routes(app);
+const admin_routes = require('./app-routes/admin_routes');
+admin_routes(app);
 
 app.use((req, res) => res.status(404).json({ message: 'Not found' }));
 // Malformed JSON bodies etc.

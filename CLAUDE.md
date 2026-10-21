@@ -9,6 +9,7 @@ npm run migrate           # sequelize-cli db:migrate
 npm run dev               # nodemon app.js (default port 8010)
 npm test                  # node --test (event matcher)
 npm run faces:reindex     # after changing FACE_PROVIDER
+npm run admin:create -- --email … --name … --lastname …   # first super admin
 ```
 
 Face service (FACE_PROVIDER=local, started/restarted by app.js):
@@ -25,12 +26,12 @@ HTTP → app.js → app-routes/*.js → middleware/ → handlers/*.js → models
 ```
 
 - `app-routes/` — route files per area, each `module.exports = function(app)` registered in `app.js`.
-- `handlers/` — all business logic: `RegistrationHandler.js` (auth + photographer payout account at signup), `EventHandler.js` (shared event search + candidate retrieval), `creatorHandler.js` (events, joining, pricing, uploads, payout setup, sales from our ledger), `client_handler.js` (client events, face search, matches), `PaymentHandler.js` (checkout via each photographer's gateway, webhooks, orders, purchases, downloads).
+- `handlers/` — all business logic: `RegistrationHandler.js` (auth + photographer payout account at signup), `EventHandler.js` (shared event search + candidate retrieval), `creatorHandler.js` (events, joining, pricing, uploads, payout setup, sales from our ledger), `client_handler.js` (client events, face search, matches), `PaymentHandler.js` (checkout via each photographer's gateway, webhooks, orders, purchases, downloads), `AdminHandler.js` (admin dashboard: stats, moderation, admins, audit log — `docs/admin-api.md`).
 - `helpers/payments/` — gateway-independent payments: provider interface + registry (`index.js`), country → gateway routing (`countries.js`: ZW → SmatPay, ZA/NG/GH/KE → Paystack), `providers/smatpay.js`, `providers/paystack.js`, `PaymentError`. `helpers/smatpay/` holds SmatPay's low-level API (modelled on tese-backend and `../whatsapp/smatpay_whatsapp`). `helpers/paymentTracker.js` polls pending orders with their own gateway (10 s) and applies webhooks. See `docs/payments-api.md`.
 - `helpers/faces/` — swappable face matching (`local` = `face-service/` + embeddings in MySQL, `rekognition`). See `docs/client-api.md`.
 - `helpers/videoTools.js` — ffmpeg (bundled `ffmpeg-static`): probe, poster, watermarked preview clip, frame sampling.
 - `middleware/authentication.js` — `authenticateToken` (access, verified users), `authenticateOtpToken`, `authenticateResetToken`. Sets `req.user` (JWT claims) and `req.dbUser` (Sequelize row).
-- `middleware/user_type.js` — `userType('creator')` guard for role-specific routes.
+- `middleware/user_type.js` — `userType('creator')` guard for role-specific routes; `middleware/admin_role.js` — `adminRole('super_admin')` for admin-only routes.
 - `middleware/rate_limit.js` — `authLimiter`, `emailLimiter`.
 - `helpers/tokens.js` — JWTs with a `purpose` claim (`access` 1h, `refresh` 30d, `otp` 15m, `reset` 15m). `issueSession()` rotates the refresh token (hash stored in `users.refresh_token_hash`).
 - `helpers/otp.js` — 6-digit OTPs, bcrypt-hashed on the user row, 10 min TTL, 5 attempts, 60s resend cooldown.
@@ -51,6 +52,11 @@ See `docs/events-api.md`. Key invariants:
 - Events are shared; never create one without running `EventHandler.findMatchingEvents` (CreateEvent does this server-side).
 - Photographers only ever see/modify their own media; access is gated by an `event_photographers` row.
 - Media expires 7 days after upload completes; files are uploaded directly to S3, never through the API.
+
+## Admin rules
+- Admins are `user_type: 'admin'` (+ `admin_role`), never created through signup and refused by the app login. Admin routes: `[authenticateToken, userType('admin')]`, admin management adds `adminRole('super_admin')`.
+- Every admin change goes through `audit()` into `admin_actions`. Keep at least one active super admin.
+- Model timestamps are `createdAt`/`updatedAt` on instances (`underscored` only renames columns) — read `x.createdAt`, not `x.created_at`.
 
 ## Payments rules
 - Never call a gateway directly from handlers — go through `helpers/payments` (provider of the photographer's `payout_accounts` row; the order's `provider` for tracking). New gateways = new `providers/*.js` + routing, nothing else.

@@ -134,6 +134,10 @@ exports.LoginUser = async (req, res) => {
         if (existingUser.status !== 'active') {
             return res.status(403).json({ message: 'This account has been deactivated' });
         }
+        // Admin accounts sign in on the admin dashboard (POST /api/admin/auth/login), not the app.
+        if (existingUser.user_type === 'admin') {
+            return res.status(403).json({ message: 'Admin accounts sign in on the admin dashboard' });
+        }
 
         // OTP is only required while the email has never been confirmed.
         if (!existingUser.email_verified_at) {
