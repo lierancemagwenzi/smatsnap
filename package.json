@@ -1,0 +1,42 @@
+{
+  "name": "photo_api",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js",
+    "migrate": "sequelize-cli db:migrate",
+    "migrate:undo": "sequelize-cli db:migrate:undo",
+    "test": "node --test test/*.test.js",
+    "faces:reindex": "node scripts/reindexFaces.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@aws-sdk/client-rekognition": "^3.1152.0",
+    "@aws-sdk/client-s3": "^3.1152.0",
+    "@aws-sdk/s3-request-presigner": "^3.1152.0",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.8",
+    "exif-reader": "^2.0.3",
+    "express": "^5.3.0",
+    "express-rate-limit": "^8.7.1",
+    "ffmpeg-static": "^5.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "morgan": "^1.12.1",
+    "multer": "^2.4.0",
+    "mysql2": "^3.24.6",
+    "node-schedule": "^2.1.1",
+    "nodemailer": "^10.1.2",
+    "sequelize": "^6.37.8",
+    "sharp": "^0.35.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14",
+    "sequelize-cli": "^6.6.5"
+  }
+}
