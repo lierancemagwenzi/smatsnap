@@ -300,7 +300,7 @@ exports.RefreshToken = async (req, res) => {
         }
 
         const existingUser = await user.findByPk(decoded.id);
-        if (!existingUser || existingUser.status !== 'active' || !existingUser.email_verified_at) {
+        if (!existingUser || existingUser.status !== 'active' || (!existingUser.email_verified_at && !existingUser.is_guest)) {
             return res.status(401).json({ message: 'Invalid refresh token' });
         }
 
@@ -316,6 +316,25 @@ exports.RefreshToken = async (req, res) => {
         return res.status(200).json({ ...session, user: existingUser.toPublicJSON() });
     } catch (error) {
         console.error('RefreshToken Error:', error);
+        return res.status(500).json({ message: 'Internal server error' });
+    }
+};
+
+// POST /api/guest/session — an anonymous client session, so people can find and buy their
+// photos without an account (docs/client-api.md → Guests). The app keeps the refresh token.
+exports.GuestSession = async (req, res) => {
+    try {
+        const guest = await user.create({
+            name: 'Guest',
+            lastname: '',
+            user_type: 'client',
+            is_guest: true,
+            status: 'active',
+        });
+        const session = await tokens.issueSession(guest);
+        return res.status(201).json({ ...session, user: guest.toPublicJSON() });
+    } catch (error) {
+        console.error('GuestSession Error:', error);
         return res.status(500).json({ message: 'Internal server error' });
     }
 };

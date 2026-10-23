@@ -33,7 +33,7 @@ HTTP → app.js → app-routes/*.js → middleware/ → handlers/*.js → models
 - `middleware/authentication.js` — `authenticateToken` (access, verified users), `authenticateOtpToken`, `authenticateResetToken`. Sets `req.user` (JWT claims) and `req.dbUser` (Sequelize row).
 - `middleware/user_type.js` — `userType('creator')` guard for role-specific routes; `middleware/admin_role.js` — `adminRole('super_admin')` for admin-only routes.
 - `middleware/rate_limit.js` — `authLimiter`, `emailLimiter`.
-- `helpers/tokens.js` — JWTs with a `purpose` claim (`access` 1h, `refresh` 30d, `otp` 15m, `reset` 15m). `issueSession()` rotates the refresh token (hash stored in `users.refresh_token_hash`).
+- `helpers/tokens.js` — JWTs with a `purpose` claim (`access` 1h, `refresh` 30d, `otp` 15m, `reset` 15m, `download` until the purchase's `download_until`). `issueSession()` rotates the refresh token (hash stored in `users.refresh_token_hash`).
 - `helpers/otp.js` — 6-digit OTPs, bcrypt-hashed on the user row, 10 min TTL, 5 attempts, 60s resend cooldown.
 - `helpers/env.js` — environment switches (JWT secret, S3 bucket/region).
 - `services/s3client.js` + `helpers/amazonHelper.js` — presigned PUT/GET, head, delete.
@@ -46,6 +46,7 @@ HTTP → app.js → app-routes/*.js → middleware/ → handlers/*.js → models
 - OTP is required only while `email_verified_at` is NULL (new signups, or unverified users logging in). Verified users get tokens straight from `/api/auth/login`.
 - Never return OTPs or password/token hashes in responses (`user.toPublicJSON()`).
 - Forgot-password responds identically whether or not the email exists.
+- Guest clients (`POST /api/guest/session`, `users.is_guest`): no email/password, pass `authenticateToken` without verification, give `email` at checkout (stored as `contact_email`, never a login). Purchase notices go to `user.noticeEmail` and include `/api/downloads/:token` links. See `docs/client-api.md` → Guests.
 
 ## Events & media rules
 See `docs/events-api.md`. Key invariants:

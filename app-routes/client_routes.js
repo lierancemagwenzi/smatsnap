@@ -43,6 +43,10 @@ module.exports = function (app) {
     app.route('/api/client/purchases/:mediaId/download')
         .get(clientOnly, paymentHandler.Download);
 
+    // Emailed download links (token in the URL, no sign-in)
+    app.route('/api/downloads/:token')
+        .get(paymentHandler.EmailDownload);
+
     // Gateway callbacks (no user auth: webhooks are signature-checked, the return page is static)
     app.route('/api/payments/:provider/webhook')
         .post(paymentHandler.Webhook);

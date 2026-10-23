@@ -38,7 +38,14 @@ function otpTemplate(name, otp, subject, ttlMinutes) {
 </html>`;
 }
 
-function plainTemplate(heading, lines) {
+const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+function linkRows(links) {
+    if (!links || !links.length) return '';
+    return links.map((l) => `<tr><td style="padding:6px 32px;"><a href="${escapeHtml(l.url)}" style="display:inline-block;padding:10px 18px;border-radius:12px;background:linear-gradient(90deg,#8b3dff,#e64b9b);color:#fff;font-size:14px;font-weight:bold;text-decoration:none;">${escapeHtml(l.label)}</a></td></tr>`).join('');
+}
+
+function plainTemplate(heading, lines, links) {
     const appName = env.appName();
     return `<!doctype html>
 <html lang="en">
@@ -49,6 +56,7 @@ function plainTemplate(heading, lines) {
         <tr><td style="padding:32px 32px 8px;color:#fff;font-size:22px;font-weight:bold;">${appName}</td></tr>
         <tr><td style="padding:8px 32px;color:#fff;font-size:18px;font-weight:bold;">${heading}</td></tr>
         ${lines.map((l) => `<tr><td style="padding:6px 32px;color:#c9b6d6;font-size:15px;">${l}</td></tr>`).join('')}
+        ${linkRows(links)}
         <tr><td style="padding:0 32px 28px;"></td></tr>
       </table>
     </td></tr>
@@ -58,20 +66,24 @@ function plainTemplate(heading, lines) {
 }
 
 module.exports = {
-    /** Simple notification email; never throws (a failed email must not break the caller). */
-    SendNotice: async function (email, subject, heading, lines) {
+    /**
+     * Simple notification email; never throws (a failed email must not break the caller).
+     * `links` ([{label, url}]) render as buttons.
+     */
+    SendNotice: async function (email, subject, heading, lines, links = []) {
         try {
+            if (!email) return;
             const mailTransport = getTransporter();
             if (!mailTransport) {
-                if (!env.isProd()) console.log(`[mailer] SMTP not configured — notice to ${email}: ${subject}`);
+                if (!env.isProd()) console.log(`[mailer] SMTP not configured — notice to ${email}: ${subject}`, links.map((l) => l.url));
                 return;
             }
             await mailTransport.sendMail({
                 from: process.env.MAIL_FROM,
                 to: email,
                 subject: `${subject} — ${env.appName()}`,
-                text: [heading, ...lines].join('\n'),
-                html: plainTemplate(heading, lines),
+                text: [heading, ...lines, ...links.map((l) => `${l.label}: ${l.url}`)].join('\n'),
+                html: plainTemplate(heading, lines, links),
             });
         } catch (err) {
             console.error('[mailer] notice failed:', err.message);

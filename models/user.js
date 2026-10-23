@@ -7,6 +7,11 @@ module.exports = (sequelize, DataTypes) => {
             user.hasOne(models.payout_account, { foreignKey: 'user_id', as: 'payout' });
         }
 
+        /** Where purchase notices go: the login email, or the email a guest gave at checkout. */
+        get noticeEmail() {
+            return this.email || this.contact_email || null;
+        }
+
         // Shape returned to clients — never includes password/otp/refresh token hashes.
         toPublicJSON() {
             return {
@@ -17,6 +22,7 @@ module.exports = (sequelize, DataTypes) => {
                 user_type: this.user_type,
                 status: this.status,
                 email_verified_at: this.email_verified_at,
+                ...(this.is_guest ? { is_guest: true, contact_email: this.contact_email } : {}),
                 ...(this.user_type === 'admin' ? { admin_role: this.admin_role } : {}),
             };
         }
@@ -26,8 +32,12 @@ module.exports = (sequelize, DataTypes) => {
         name: DataTypes.STRING,
         lastname: DataTypes.STRING,
         email: DataTypes.STRING,
+        // Guests only: where purchase emails go (never a login).
+        contact_email: DataTypes.STRING,
         // 'creator' (photographer) | 'client' | 'admin' (dashboard only, never via signup)
         user_type: DataTypes.STRING,
+        // Guest client (no account): no email/password, signed in by its own refresh token only.
+        is_guest: DataTypes.BOOLEAN,
         // Admins only: 'super_admin' (also manages admins) | 'admin'
         admin_role: DataTypes.STRING,
         status: DataTypes.STRING,

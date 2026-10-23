@@ -10,6 +10,7 @@ const PURPOSE = {
     REFRESH: 'refresh',
     OTP: 'otp',       // between password check and OTP confirmation (unverified email)
     RESET: 'reset',   // after a password-reset OTP was confirmed, before the new password is set
+    DOWNLOAD: 'download', // emailed link to one purchased original (no sign-in), valid until download_until
 };
 
 const EXPIRY = {
@@ -58,4 +59,10 @@ async function issueSession(existingUser) {
     return { token, refresh_token: refreshToken };
 }
 
-module.exports = { PURPOSE, sign, verify, hashToken, passwordFingerprint, issueSession };
+/** Emailed download link token for one purchase; expires with the purchase's download period. */
+function signDownload(purchase) {
+    const seconds = Math.max(60, Math.floor((new Date(purchase.download_until).getTime() - Date.now()) / 1000));
+    return jwt.sign({ pid: purchase.id, cid: purchase.client_id, purpose: PURPOSE.DOWNLOAD }, env.jwtSecret(), { expiresIn: seconds });
+}
+
+module.exports = { PURPOSE, sign, verify, hashToken, passwordFingerprint, issueSession, signDownload };

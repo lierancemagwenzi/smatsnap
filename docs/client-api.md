@@ -25,3 +25,16 @@ Privacy rules:
 - After switching: `npm run faces:reindex`.
 
 Processing (`helpers/mediaProcessor.js`): photos → clean thumb, watermarked thumb + preview, faces from a 1600px copy. Videos → streamed to a temp file → poster frame, watermarked 15 s preview clip, one frame every 2 s (≤ 150) → faces with their timestamps. Failed indexing is retried every 10 min.
+
+## Guests (no account)
+
+Clients can find, buy and download their photos without signing up.
+
+| Request | Response |
+|---|---|
+| `POST /api/guest/session` (rate-limited) | 201 `{token, refresh_token, user:{…, user_type:"client", is_guest:true, contact_email}}` |
+
+- A guest is a `client` row with `is_guest = 1` and no email/password. Its access/refresh tokens work on every `/api/client/*` route and `/api/events/search`, and refresh like any session (the refresh token is the guest's only key — losing it loses the in-app purchases list).
+- `POST /api/client/checkout` from a guest **requires** `email` (400 `EMAIL_REQUIRED` otherwise); it is saved as `contact_email` (never a login) and used as the payer email and for the "payment received" notice.
+- The paid notice (for every client) carries one link per item: `GET /api/downloads/:token` — a `download`-purpose JWT for that purchase, valid until `download_until`, no sign-in; it 302-redirects to a 15-minute presigned link to the original. Links need `API_PUBLIC_URL`.
+- Admin users list: `type=guest` (and `type=client` now means clients with an account).

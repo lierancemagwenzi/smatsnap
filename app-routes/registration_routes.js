@@ -28,6 +28,10 @@ module.exports = function (app) {
     app.route('/api/auth/reset-password')
         .post(authLimiter, authMiddleWare.authenticateResetToken, registrationHandler.ResetPassword);
 
+    // No-account clients (find + buy photos without signing up)
+    app.route('/api/guest/session')
+        .post(authLimiter, registrationHandler.GuestSession);
+
     app.route('/api/auth/refresh-token')
         .post(authLimiter, registrationHandler.RefreshToken);
     app.route('/api/auth/logout')

@@ -5,6 +5,7 @@ const { Op } = require('sequelize');
 const payments = require('./payments');
 const common = require('./payments/common');
 const mailer = require('./mailer');
+const tokens = require('./tokens');
 
 const MIN_CHECK_INTERVAL_MS = 3000;
 let running = false;
@@ -13,6 +14,23 @@ const models = () => require('../models');
 
 function providerLabel(name) {
     try { return payments.provider(name).label; } catch { return 'payout'; }
+}
+
+/** One emailed link per purchased item (GET /api/downloads/:token); none without API_PUBLIC_URL. */
+async function downloadLinks(order) {
+    const base = (process.env.API_PUBLIC_URL || '').replace(/\/+$/, '');
+    if (!base) return [];
+    const rows = await models().purchase.findAll({
+        where: { order_id: order.id, client_id: order.client_id },
+        include: [{ model: models().media, as: 'media', attributes: ['type'] }],
+        order: [['id', 'ASC']],
+    });
+    let photos = 0;
+    let videos = 0;
+    return rows.map((p) => ({
+        label: p.media?.type === 'video' ? `Download video ${++videos}` : `Download photo ${++photos}`,
+        url: `${base}/api/downloads/${tokens.signDownload(p)}`,
+    }));
 }
 
 /** Marks an order paid (once) and creates the client's purchases. */
@@ -41,12 +59,12 @@ async function markPaid(order, providerStatus) {
 
     const [client, creator] = await Promise.all([user.findByPk(order.client_id), user.findByPk(order.creator_id)]);
     const amount = `${order.currency} ${Number(order.total).toFixed(2)}`;
-    if (client) {
-        mailer.SendNotice(client.email, 'Payment received', 'Your photos are ready to download', [
+    if (client?.noticeEmail) {
+        mailer.SendNotice(client.noticeEmail, 'Payment received', 'Your photos are ready to download', [
             `We received your payment of ${amount} (ref ${order.reference}).`,
             `${granted} item${granted === 1 ? ' is' : 's are'} now in Purchases in the app, in full quality and without watermarks.`,
-            `Download within ${common.downloadDays()} days.`,
-        ]);
+            `Download within ${common.downloadDays()} days — in the app, or with the links below.`,
+        ], await downloadLinks(order));
     }
     if (creator) {
         mailer.SendNotice(creator.email, 'You made a sale', 'New sale', [

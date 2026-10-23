@@ -12,6 +12,8 @@ const { PaymentError } = payments;
 const paymentTracker = require('../helpers/paymentTracker');
 const amazonHelper = require('../helpers/amazonHelper');
 const { photoTakenAt } = require('../helpers/capturedAt');
+const tokens = require('../helpers/tokens');
+const validator = require('../helpers/validator');
 
 const MAX_ITEMS = 50;
 const DOWNLOAD_URL_TTL_SECONDS = 15 * 60;
@@ -133,8 +135,9 @@ exports.Quote = async (req, res) => {
     }
 };
 
-// POST /api/client/checkout  { media_ids, method, payer_mobile? }
+// POST /api/client/checkout  { media_ids, method, payer_mobile?, email? }
 // All items must belong to one photographer and one event (one payment).
+// Guests must send `email` — the download links are emailed there (saved as contact_email).
 exports.Checkout = async (req, res) => {
     let order = null;
     try {
@@ -142,6 +145,13 @@ exports.Checkout = async (req, res) => {
         if (!ids) return res.status(400).json({ message: `Choose between 1 and ${MAX_ITEMS} items` });
         const methodId = String(req.body.method || '').toUpperCase();
         const payerMobile = String(req.body.payer_mobile || '').replace(/\s/g, '');
+        if (req.dbUser.is_guest) {
+            const email = validator.normalizeEmail(req.body.email);
+            if (!validator.isValidEmail(email)) {
+                return res.status(400).json({ code: 'EMAIL_REQUIRED', message: 'Enter your email so we can send you the download links' });
+            }
+            if (req.dbUser.contact_email !== email) await req.dbUser.update({ contact_email: email });
+        }
 
         const { lines, problems } = await buyableLines(req.dbUser.id, ids);
         if (problems.length || lines.length !== ids.length) {
@@ -207,7 +217,7 @@ exports.Checkout = async (req, res) => {
             account: group.account,
             order,
             methodId,
-            payer: { name: `${req.dbUser.name} ${req.dbUser.lastname}`.trim(), email: req.dbUser.email, mobile: payerMobile },
+            payer: { name: `${req.dbUser.name} ${req.dbUser.lastname}`.trim(), email: req.dbUser.noticeEmail, mobile: payerMobile },
             itemCount: lines.length,
         });
         await order.update({
@@ -323,6 +333,37 @@ exports.MyPurchases = async (req, res) => {
     }
 };
 
+function downloadFilename(media) {
+    const ext = path.extname(media.original_key) || (media.type === 'video' ? '.mp4' : '.jpg');
+    return `smatsnap-${media.event_id}-${media.id}${ext}`;
+}
+
+// GET /api/downloads/:token — the link in the "payment received" email (no sign-in, so guests
+// can download from any device). Redirects to a short-lived link to the original file.
+exports.EmailDownload = async (req, res) => {
+    const page = (status, heading, text) => res.status(status).type('html').send('<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1">'
+        + '<body style="font-family:-apple-system,system-ui,sans-serif;text-align:center;padding:48px 24px">'
+        + `<h2>${heading}</h2><p>${text}</p></body>`);
+    let claims;
+    try {
+        claims = tokens.verify(req.params.token, tokens.PURPOSE.DOWNLOAD);
+    } catch (err) {
+        return page(410, 'This link has expired', 'The download period for this purchase has ended, or the link is incomplete.');
+    }
+    try {
+        const p = await models.purchase.findOne({
+            where: { id: claims.pid, client_id: claims.cid, download_until: { [Op.gt]: new Date() } },
+            include: [{ model: models.media, as: 'media', where: { status: { [Op.ne]: 'deleted' } } }],
+        });
+        if (!p) return page(404, 'Download not available', 'This item was removed or its download period has ended.');
+        const url = await amazonHelper.presignDownload(p.media.original_key, { filename: downloadFilename(p.media), expiresIn: DOWNLOAD_URL_TTL_SECONDS });
+        return res.redirect(302, url);
+    } catch (error) {
+        console.error('EmailDownload Error:', error);
+        return page(500, 'Something went wrong', 'Please try the link again in a moment.');
+    }
+};
+
 // GET /api/client/purchases/:mediaId/download — short-lived link to the original file.
 exports.Download = async (req, res) => {
     try {
@@ -335,8 +376,7 @@ exports.Download = async (req, res) => {
         if (p.media.taken_at === null && p.media.type === 'photo') {
             await p.media.update({ taken_at: await photoTakenAt(await amazonHelper.getBuffer(p.media.original_key)) });
         }
-        const ext = path.extname(p.media.original_key) || (p.media.type === 'video' ? '.mp4' : '.jpg');
-        const filename = `smatsnap-${p.media.event_id}-${p.media.id}${ext}`;
+        const filename = downloadFilename(p.media);
         return res.status(200).json({
             url: await amazonHelper.presignDownload(p.media.original_key, { filename, expiresIn: DOWNLOAD_URL_TTL_SECONDS }),
             filename,

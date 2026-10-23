@@ -356,16 +356,18 @@ exports.System = async (req, res) => {
 
 // ── Users (clients + photographers) ─────────────────────────────────────────
 
-// GET /api/admin/users?type=creator|client&status=&q=&page=&size=
+// GET /api/admin/users?type=creator|client|guest&status=&q=&page=&size=  (client = with an account)
 exports.Users = async (req, res) => {
     try {
         const { page, size, offset } = paging(req);
         const where = { user_type: ['creator', 'client'].includes(req.query.type) ? req.query.type : ['creator', 'client'] };
+        if (req.query.type === 'client') where.is_guest = false;
+        if (req.query.type === 'guest') Object.assign(where, { user_type: 'client', is_guest: true });
         if (USER_STATUSES.includes(req.query.status)) where.status = req.query.status;
         if (req.query.verified === 'true') where.email_verified_at = { [Op.ne]: null };
         if (req.query.verified === 'false') where.email_verified_at = null;
         const like = likeTerm(req.query.q);
-        if (like) where[Op.or] = [{ name: { [Op.like]: like } }, { lastname: { [Op.like]: like } }, { email: { [Op.like]: like } }];
+        if (like) where[Op.or] = [{ name: { [Op.like]: like } }, { lastname: { [Op.like]: like } }, { email: { [Op.like]: like } }, { contact_email: { [Op.like]: like } }];
 
         const { rows, count } = await models.user.findAndCountAll({
             where,

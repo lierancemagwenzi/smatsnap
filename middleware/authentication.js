@@ -24,7 +24,8 @@ function requireToken(purpose, { requireVerified }) {
                 return res.status(401).json({ message: 'User account not found or deactivated' });
             }
 
-            if (requireVerified && !dbUser.email_verified_at) {
+            // Guests have no email to verify.
+            if (requireVerified && !dbUser.email_verified_at && !dbUser.is_guest) {
                 return res.status(403).json({ message: 'Email not verified', requires_otp: true });
             }
 
@@ -44,7 +45,7 @@ function requireToken(purpose, { requireVerified }) {
     };
 }
 
-// Normal API access (dashboard etc.) — verified users only.
+// Normal API access (dashboard etc.) — verified users (and guest clients) only.
 exports.authenticateToken = requireToken(tokens.PURPOSE.ACCESS, { requireVerified: true });
 
 // The OTP step of login/registration — issued while email_verified_at is still null.
