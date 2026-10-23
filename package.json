@@ -10,7 +10,8 @@
     "migrate:undo": "sequelize-cli db:migrate:undo",
     "test": "node --test test/*.test.js",
     "faces:reindex": "node scripts/reindexFaces.js",
-    "admin:create": "node scripts/createAdmin.js"
+    "admin:create": "node scripts/createAdmin.js",
+    "s3:cors": "node scripts/s3Cors.js"
   },
   "keywords": [],
   "author": "",
