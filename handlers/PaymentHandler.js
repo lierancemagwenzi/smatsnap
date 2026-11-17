@@ -335,7 +335,7 @@ exports.MyPurchases = async (req, res) => {
 
 function downloadFilename(media) {
     const ext = path.extname(media.original_key) || (media.type === 'video' ? '.mp4' : '.jpg');
-    return `smatsnap-${media.event_id}-${media.id}${ext}`;
+    return `creamob-${media.event_id}-${media.id}${ext}`;
 }
 
 // GET /api/downloads/:token — the link in the "payment received" email (no sign-in, so guests

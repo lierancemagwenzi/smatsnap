@@ -850,7 +850,7 @@ exports.CreateAdmin = async (req, res) => {
         await mailer.SendNotice(email, 'You’re now an admin', `Welcome to the ${env.appName()} admin team`, [
             `${fullName(req.dbUser)} added you as ${role === 'super_admin' ? 'a super admin' : 'an admin'}.`,
             setPasswordUrl
-                ? `Choose your password here: <a href="${setPasswordUrl}" style="color:#e64b9b;">${setPasswordUrl}</a>`
+                ? `Choose your password here: <a href="${setPasswordUrl}" style="color:#ff2f91;">${setPasswordUrl}</a>`
                 : 'Open the admin dashboard and choose “Set or reset password” to create your password.',
             'We’ll email you a code to confirm it’s you.',
         ]);

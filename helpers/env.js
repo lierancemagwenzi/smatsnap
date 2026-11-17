@@ -4,7 +4,11 @@ module.exports = {
     },
 
     appName: function () {
-        return process.env.APP_NAME || 'SmatSnap';
+        return process.env.APP_NAME || 'creaMob';
+    },
+
+    mailLogoUrl: function () {
+        return process.env.MAIL_LOGO_URL || '';
     },
 
     jwtSecret: function () {

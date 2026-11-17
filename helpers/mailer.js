@@ -16,21 +16,30 @@ function getTransporter() {
     return transporter;
 }
 
+// Email header: the logo image when MAIL_LOGO_URL is set (a public PNG, e.g. <website>/logo.png), else the name.
+function brandRow(appName) {
+    const logo = env.mailLogoUrl();
+    const inner = logo
+        ? `<img src="${escapeHtml(logo)}" alt="${escapeHtml(appName)}" width="160" style="display:block;width:160px;max-width:60%;height:auto;border:0;" />`
+        : escapeHtml(appName);
+    return `<tr><td style="padding:32px 32px 8px;color:#fff;font-size:22px;font-weight:bold;">${inner}</td></tr>`;
+}
+
 function otpTemplate(name, otp, subject, ttlMinutes) {
     const appName = env.appName();
     return `<!doctype html>
 <html lang="en">
-<body style="margin:0;padding:0;background:#14081c;font-family:Helvetica,Arial,sans-serif;">
+<body style="margin:0;padding:0;background:#151515;font-family:Helvetica,Arial,sans-serif;">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="padding:32px 12px;">
     <tr><td align="center">
-      <table role="presentation" width="520" cellspacing="0" cellpadding="0" style="max-width:520px;width:100%;background:#22112b;border-radius:20px;">
-        <tr><td style="padding:32px 32px 8px;color:#fff;font-size:22px;font-weight:bold;">${appName}</td></tr>
-        <tr><td style="padding:8px 32px;color:#e9dcf2;font-size:16px;">Hi ${name || 'there'},</td></tr>
-        <tr><td style="padding:8px 32px;color:#c9b6d6;font-size:15px;">${subject}. Use this code:</td></tr>
+      <table role="presentation" width="520" cellspacing="0" cellpadding="0" style="max-width:520px;width:100%;background:#1e1e1e;border-radius:20px;">
+        ${brandRow(appName)}
+        <tr><td style="padding:8px 32px;color:#f5f5f5;font-size:16px;">Hi ${name || 'there'},</td></tr>
+        <tr><td style="padding:8px 32px;color:#c7c7c7;font-size:15px;">${subject}. Use this code:</td></tr>
         <tr><td style="padding:16px 32px;">
-          <div style="display:inline-block;padding:14px 26px;border-radius:14px;background:linear-gradient(90deg,#8b3dff,#e64b9b);color:#fff;font-size:30px;letter-spacing:8px;font-weight:bold;">${otp}</div>
+          <div style="display:inline-block;padding:14px 26px;border-radius:14px;background:linear-gradient(90deg,#ff2f91,#e0157a);color:#fff;font-size:30px;letter-spacing:8px;font-weight:bold;">${otp}</div>
         </td></tr>
-        <tr><td style="padding:8px 32px 32px;color:#9d88ab;font-size:13px;">It expires in ${ttlMinutes} minutes. If you didn't request it, you can ignore this email.</td></tr>
+        <tr><td style="padding:8px 32px 32px;color:#9e9e9e;font-size:13px;">It expires in ${ttlMinutes} minutes. If you didn't request it, you can ignore this email.</td></tr>
       </table>
     </td></tr>
   </table>
@@ -42,20 +51,20 @@ const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', 
 
 function linkRows(links) {
     if (!links || !links.length) return '';
-    return links.map((l) => `<tr><td style="padding:6px 32px;"><a href="${escapeHtml(l.url)}" style="display:inline-block;padding:10px 18px;border-radius:12px;background:linear-gradient(90deg,#8b3dff,#e64b9b);color:#fff;font-size:14px;font-weight:bold;text-decoration:none;">${escapeHtml(l.label)}</a></td></tr>`).join('');
+    return links.map((l) => `<tr><td style="padding:6px 32px;"><a href="${escapeHtml(l.url)}" style="display:inline-block;padding:10px 18px;border-radius:12px;background:linear-gradient(90deg,#ff2f91,#e0157a);color:#fff;font-size:14px;font-weight:bold;text-decoration:none;">${escapeHtml(l.label)}</a></td></tr>`).join('');
 }
 
 function plainTemplate(heading, lines, links) {
     const appName = env.appName();
     return `<!doctype html>
 <html lang="en">
-<body style="margin:0;padding:0;background:#14081c;font-family:Helvetica,Arial,sans-serif;">
+<body style="margin:0;padding:0;background:#151515;font-family:Helvetica,Arial,sans-serif;">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="padding:32px 12px;">
     <tr><td align="center">
-      <table role="presentation" width="520" cellspacing="0" cellpadding="0" style="max-width:520px;width:100%;background:#22112b;border-radius:20px;">
-        <tr><td style="padding:32px 32px 8px;color:#fff;font-size:22px;font-weight:bold;">${appName}</td></tr>
+      <table role="presentation" width="520" cellspacing="0" cellpadding="0" style="max-width:520px;width:100%;background:#1e1e1e;border-radius:20px;">
+        ${brandRow(appName)}
         <tr><td style="padding:8px 32px;color:#fff;font-size:18px;font-weight:bold;">${heading}</td></tr>
-        ${lines.map((l) => `<tr><td style="padding:6px 32px;color:#c9b6d6;font-size:15px;">${l}</td></tr>`).join('')}
+        ${lines.map((l) => `<tr><td style="padding:6px 32px;color:#c7c7c7;font-size:15px;">${l}</td></tr>`).join('')}
         ${linkRows(links)}
         <tr><td style="padding:0 32px 28px;"></td></tr>
       </table>
